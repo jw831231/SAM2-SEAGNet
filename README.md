@@ -4,7 +4,7 @@
 
 Official PyTorch implementation of the paper.
 
-**Authors**: Wei Jiang*, Wenzhu Wu, Yu Li, Yongxi Qin, Xi Li (corresponding author)
+**Authors**: Wei Jiang* (corresponding author), Wenzhu Wu, Yu Li, Yongxi Qin
 **Affiliation**: Department of Basic Medical Sciences, Chongqing Medical and Pharmaceutical College | Key Laboratory of Brain-Machine Fusion and Intelligent Medical Equipment
 
 ---
@@ -49,7 +49,11 @@ SAM2-SEAGNet/
 ├── requirements.txt
 ├── .gitignore
 ├── train.py                 # Clean training script with argparse
-├── infer.py                 # Inference & visualization demo
+├── infer.py                 # Full inference script
+├── scripts/
+│   └── prepare_camus.py     # CAMUS data preprocessing script
+├── configs/
+│   └── default.yaml
 ├── sam2_seagnet/            # Core package
 │   ├── __init__.py
 │   ├── models.py            # SEAG, ASPP, CBAM, SAM2PromptGenerator
@@ -57,7 +61,6 @@ SAM2-SEAGNet/
 │   ├── losses.py            # CombinedLoss (BCE + Dice + Boundary)
 │   ├── metrics.py           # Dice, IoU, HD, HD95
 │   └── utils.py             # Visualization helpers
-├── configs/                 # (Future) default.yaml
 ├── paper/                   # Manuscript (.docx)
 ├── assets/
 └── checkpoints/             # Trained weights (gitignored)
@@ -87,30 +90,28 @@ git clone https://github.com/facebookresearch/segment-anything-2.git
 cd segment-anything-2
 pip install -e .
 
-# Download checkpoint (sam2.1_hiera_base_plus.pt) from 
-# https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2.1_hiera_base_plus.pt
+# Download checkpoint (sam2.1_hiera_base_plus.pt)
 # Place it somewhere accessible, e.g. ~/checkpoints/sam2.1_hiera_base_plus.pt
 
-# Copy config yaml (important!)
+# Copy config yaml
 mkdir -p sam2/configs/sam2.1
-# Copy sam2.1_hiera_b.yaml from your SAM2 download or Kaggle input to the above path
+# Copy sam2.1_hiera_b.yaml to the above path
 ```
 
 Return to the project folder.
 
 ### 3. Prepare CAMUS Data
 
-1. Download CAMUS dataset (registration required): https://humanheart-project.creatis.insa-lyon.fr/
-2. Preprocess into PNG format:
-   - One folder `images/` containing `patientID_xxx.png`
-   - One folder `masks/` containing `patientID_xxx_mask.png`
-3. Recommended split: patient-level 80% train / 10% val / 10% test
+Use the provided script:
+```bash
+python scripts/prepare_camus.py --input_dir /path/to/raw/camus --output_dir /path/to/processed/camus
+```
 
-The code supports training separate models for **LV**, **MYO**, or **LA**.
+Or manually convert to PNG pairs (images/ + masks/).
 
 ## Usage
 
-### Training (Recommended)
+### Training
 
 ```bash
 python train.py \
@@ -118,47 +119,46 @@ python train.py \
     --mask_dir /path/to/camus/masks \
     --output_dir ./output \
     --sam2_checkpoint /path/to/sam2.1_hiera_base_plus.pt \
-    --sam2_config sam2/configs/sam2.1/sam2.1_hiera_b.yaml \
+    --sam2_config /path/to/sam2/configs/sam2.1/sam2.1_hiera_b.yaml \
     --epochs 100 \
     --batch_size 8 \
-    --lr 1e-4 \
-    --resume
+    --lr 1e-4
 ```
 
-Key features in `train.py`:
-- argparse for all important parameters
-- Automatic checkpointing & best model saving
-- Resume training support
-- Mixed precision (AMP)
-- Training curves + test evaluation + visualization
-
-### Inference & Visualization
+### Inference (New!)
 
 ```bash
+# Single image
 python infer.py \
     --checkpoint ./output/best_prompt_generator.pth \
-    --image_dir /path/to/test/images \
+    --sam2_checkpoint /path/to/sam2.1_hiera_base_plus.pt \
+    --image_path /path/to/test/image.png \
+    --output_dir ./results
+
+# Folder (batch)
+python infer.py \
+    --checkpoint ./output/best_prompt_generator.pth \
+    --sam2_checkpoint /path/to/sam2.1_hiera_base_plus.pt \
+    --image_path /path/to/test_folder \
     --output_dir ./results
 ```
 
 ## Citation
 
-If you use this work, please cite:
-
 ```bibtex
 @article{Jiang2026SAM2SEAGNet,
   title={SAM2-SEAGNet: SAM2 Network with Speckle-Edge Aware Attention Gate for Cardiac Structure Segmentation in Echocardiographic Images},
-  author={Jiang, Wei and Wu, Wenzhu and Li, Yu and Qin, Yongxi and Li, Xi},
+  author={Jiang, Wei and Wu, Wenzhu and Li, Yu and Qin, Yongxi},
   year={2026}
 }
 ```
 
 ## Acknowledgments
 
-This work was supported in part by the Science and Technology Research Program of Chongqing Education Commission of China.
+Supported in part by the Science and Technology Research Program of Chongqing Education Commission of China.
 
 **Contact**: 10720@cqmpc.edu.cn
 
 ---
 
-*Repository created for reproducibility and advancing medical ultrasound AI research.*
+*Repository created for reproducibility in medical ultrasound AI.*
