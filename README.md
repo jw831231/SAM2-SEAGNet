@@ -2,52 +2,45 @@
 
 **SAM2-SEAGNet: SAM2 Network with Speckle-Edge Aware Attention Gate for Cardiac Structure Segmentation in Echocardiographic Images**
 
-Official PyTorch implementation for the research paper.
+Official PyTorch implementation of the paper.
 
-**Authors**: Wei Jiang*, Wenzhu Wu, Yu Li, Yongxi Qin, Xi Li (corresponding)
-**Affiliation**: Chongqing Medical and Pharmaceutical College, Key Laboratory of Brain-Machine Fusion and Intelligent Medical Equipment
+**Authors**: Wei Jiang*, Wenzhu Wu, Yu Li, Yongxi Qin, Xi Li (corresponding author)
+**Affiliation**: Department of Basic Medical Sciences, Chongqing Medical and Pharmaceutical College | Key Laboratory of Brain-Machine Fusion and Intelligent Medical Equipment
 
 ---
 
 ## Abstract
 
-Echocardiography is essential for clinical cardiovascular disease diagnosis, but accurate segmentation of cardiac structures (LV, LA, MYO) remains challenging due to **multi-scale variations**, **severe speckle noise**, and **blurred tissue boundaries**.
+Echocardiography is essential for clinical cardiovascular disease diagnosis, but accurate segmentation of cardiac structures (left ventricle LV, left atrium LA, left ventricular myocardium MYO) remains challenging due to **multi-scale structural variations**, **severe speckle noise**, and **blurred tissue boundaries**.
 
-We propose **SAM2-SEAGNet**, a U-shaped encoder-decoder built on SAM2:
-- Customized **ASPP** module for multi-scale feature representation.
-- Novel lightweight **Speckle-Edge Aware Attention Gate (SEAG)** embedded in skip connections to suppress noise and refine boundaries.
+We propose **SAM2-SEAGNet**, a hierarchical U-shaped encoder-decoder segmentation network built upon Segment Anything Model 2 (SAM2). 
 
-On CAMUS dataset (patient-level split):
-- **LV**: Dice 93.23%, IoU 87.57%, HD 8.78mm (best)
-- Strong improvements in boundary accuracy (HD reduced significantly vs SOTA).
+**Key contributions**:
+- A customized **Atrous Spatial Pyramid Pooling (ASPP)** module to enhance multi-scale feature representation.
+- A novel lightweight **Speckle-Edge Aware Attention Gate (SEAG)** designed to suppress speckle noise and refine ambiguous boundaries in skip connections.
 
-Ablation confirms ASPP + SEAG synergy.
+Extensive experiments on three subsets of the public **CAMUS** dataset demonstrate state-of-the-art performance:
+- **CAMUS-LV**: Dice **93.23%**, IoU **87.57%**, HD **8.78 mm**
+- Significant boundary accuracy improvement (HD reduced by up to 46% on MYO compared to previous SOTA).
 
-## Key Results
+Ablation studies confirm the effectiveness and synergy of ASPP and SEAG modules.
 
-| Dataset    | Dice (%) | IoU (%) | HD (mm) | Notes                  |
-|------------|----------|---------|---------|------------------------|
-| CAMUS-LV  | **93.23** | **87.57** | **8.78** | Best overall          |
-| CAMUS-MYO | 86.96    | 77.28   | 10.36   | Good myocardium       |
-| CAMUS-LA  | 88.99    | 81.32   | 10.19   | Competitive LA        |
+## Highlights
 
-Compared to MSA, SwinUNet, MedSAM, SAMed, original SAM.
+- Novel **SEAG** module: Combines local variance (speckle-aware) + Sobel gradients (edge-aware) to generate spatial attention for robust feature fusion in ultrasound.
+- Customized **ASPP** + 4-stage decoder with CBAM.
+- Frozen SAM2 Hiera-Base-Plus encoder for strong pre-trained features + efficient domain adaptation.
+- Complete training pipeline with checkpointing, mixed precision, boundary loss, and visualization.
 
-## Highlights & Innovations
+## Results Summary (CAMUS Dataset)
 
-1. **Speckle-and-Edge Aware Attention Gate (SEAG)**
-   - Computes speckle intensity map (local variance from 3x3 pooling).
-   - Computes edge strength map (Sobel gradients).
-   - Concatenates with current decoder features + skip features.
-   - Generates spatial attention weights for noise-robust, edge-preserving fusion.
+| Task       | Dice (%) | IoU (%) | HD (mm) | Improvement vs SOTA (HD) |
+|------------|----------|---------|---------|---------------------------|
+| CAMUS-LV  | **93.23** | **87.57** | **8.78** | -22.2%                   |
+| CAMUS-MYO | 86.96    | 77.28   | 10.36   | **-46.3%**               |
+| CAMUS-LA  | 88.99    | 81.32   | 10.19   | -12.1%                   |
 
-2. **Customized ASPP** in bottleneck (atrous + global avg pool branches).
-
-3. **4-stage Decoder** with CBAM attention + SEAG skip connections (first two layers).
-
-4. Frozen SAM2 Hiera encoder + lightweight adapters for domain adaptation to echocardiography.
-
-## Repository Structure (Recommended)
+## Project Structure (Clean & Modular)
 
 ```
 SAM2-SEAGNet/
@@ -55,41 +48,102 @@ SAM2-SEAGNet/
 ├── LICENSE
 ├── requirements.txt
 ├── .gitignore
-├── index.py                 # Your full training script (upload it!)
-├── paper/
-│   └── SAM2-SEAGNet_paper.docx   # Upload your manuscript
-├── assets/                  # Add figures from paper if desired
-├── checkpoints/             # gitignored - put your .pth here
-└── docs/                    # Future: extended docs
+├── train.py                 # Clean training script with argparse
+├── infer.py                 # Inference & visualization demo
+├── sam2_seagnet/            # Core package
+│   ├── __init__.py
+│   ├── models.py            # SEAG, ASPP, CBAM, SAM2PromptGenerator
+│   ├── dataset.py           # CAMUSDataset
+│   ├── losses.py            # CombinedLoss (BCE + Dice + Boundary)
+│   ├── metrics.py           # Dice, IoU, HD, HD95
+│   └── utils.py             # Visualization helpers
+├── configs/                 # (Future) default.yaml
+├── paper/                   # Manuscript (.docx)
+├── assets/
+└── checkpoints/             # Trained weights (gitignored)
 ```
 
-## How to Use This Repo
+## Installation
 
-### 1. Setup
-
+### 1. Clone & Environment
 ```bash
 git clone https://github.com/jw831231/SAM2-SEAGNet.git
 cd SAM2-SEAGNet
+
+conda create -n sam2seg python=3.10 -y
+conda activate sam2seg
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
 ```
 
-Install dependencies (see requirements.txt). **SAM2 installation is the trickiest part** — follow the steps in your original `index.py` (it has a robust subprocess + yaml copy method).
+### 2. Install SAM2 (Critical Step)
 
-### 2. Data
+SAM2 requires specific setup:
 
-Prepare CAMUS as PNG pairs (images/ + masks/). Use patient-level 8:1:1 split as in the code.
+```bash
+# Clone SAM2
+cd ..
+git clone https://github.com/facebookresearch/segment-anything-2.git
+cd segment-anything-2
+pip install -e .
 
-### 3. Training
+# Download checkpoint (sam2.1_hiera_base_plus.pt) from 
+# https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2.1_hiera_base_plus.pt
+# Place it somewhere accessible, e.g. ~/checkpoints/sam2.1_hiera_base_plus.pt
 
-**Option A (Recommended for now)**: 
-Upload your working `index.py` to the repo root (or rename to `train.py`).
-Edit the path variables at the top to point to your local SAM2 folder, CAMUS data, and output directory.
-Run `python index.py` (set RESUME_TRAINING as needed).
+# Copy config yaml (important!)
+mkdir -p sam2/configs/sam2.1
+# Copy sam2.1_hiera_b.yaml from your SAM2 download or Kaggle input to the above path
+```
 
-**Option B (Future)**: We can modularize into `sam2_seagnet/models.py`, `train.py` with argparse for cleaner CLI.
+Return to the project folder.
+
+### 3. Prepare CAMUS Data
+
+1. Download CAMUS dataset (registration required): https://humanheart-project.creatis.insa-lyon.fr/
+2. Preprocess into PNG format:
+   - One folder `images/` containing `patientID_xxx.png`
+   - One folder `masks/` containing `patientID_xxx_mask.png`
+3. Recommended split: patient-level 80% train / 10% val / 10% test
+
+The code supports training separate models for **LV**, **MYO**, or **LA**.
+
+## Usage
+
+### Training (Recommended)
+
+```bash
+python train.py \
+    --image_dir /path/to/camus/images \
+    --mask_dir /path/to/camus/masks \
+    --output_dir ./output \
+    --sam2_checkpoint /path/to/sam2.1_hiera_base_plus.pt \
+    --sam2_config sam2/configs/sam2.1/sam2.1_hiera_b.yaml \
+    --epochs 100 \
+    --batch_size 8 \
+    --lr 1e-4 \
+    --resume
+```
+
+Key features in `train.py`:
+- argparse for all important parameters
+- Automatic checkpointing & best model saving
+- Resume training support
+- Mixed precision (AMP)
+- Training curves + test evaluation + visualization
+
+### Inference & Visualization
+
+```bash
+python infer.py \
+    --checkpoint ./output/best_prompt_generator.pth \
+    --image_dir /path/to/test/images \
+    --output_dir ./results
+```
 
 ## Citation
 
-Please cite the paper if you use this code or method:
+If you use this work, please cite:
 
 ```bibtex
 @article{Jiang2026SAM2SEAGNet,
@@ -99,15 +153,12 @@ Please cite the paper if you use this code or method:
 }
 ```
 
-## Next Steps & Contributions Welcome
+## Acknowledgments
 
-- [ ] Upload full `index.py` and paper .docx
-- [ ] Add modular Python package structure
-- [ ] Add inference demo script
-- [ ] Upload example pretrained weights (if sharing allowed)
-- [ ] Add data preprocessing script for CAMUS
+This work was supported in part by the Science and Technology Research Program of Chongqing Education Commission of China.
 
-**Contact / Issues**: Open an issue or email 10720@cqmpc.edu.cn
+**Contact**: 10720@cqmpc.edu.cn
 
 ---
-*Built to promote reproducibility in medical ultrasound AI.*
+
+*Repository created for reproducibility and advancing medical ultrasound AI research.*
