@@ -1,0 +1,23 @@
+# SAM2-SEAGNet Default Configuration
+
+model:
+  num_classes: 1
+  # SAM2 Hiera Base Plus is used by default
+
+training:
+  epochs: 100
+  batch_size: 8
+  lr: 0.0001
+  weight_decay: 1e-5
+  boundary_loss_weight: 0.5
+  seed: 42
+
+ data:
+  image_size: 1024          # SAM2 input size
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+inference:
+  threshold: 0.5
+  save_overlay: true
